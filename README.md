@@ -23,7 +23,7 @@ Live Demo
 Getting Started
 bash# Clone the repository
 git clone https://github.com/fernandochalbaud-png/StcokFlow.git
-cd StcokFlow
+cd StockFlow
 
 # Install dependencies
 python -m pip install -r requirements.txt
