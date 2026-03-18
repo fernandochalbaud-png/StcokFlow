@@ -1,5 +1,32 @@
 from database import db
 from datetime import datetime
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
+
+class Usuario(UserMixin, db.Model):
+    __tablename__ = 'usuarios'
+    id          = db.Column(db.Integer, primary_key=True)
+    nombre      = db.Column(db.String(100), nullable=False)
+    email       = db.Column(db.String(120), unique=True, nullable=False)
+    password    = db.Column(db.String(200), nullable=False)
+    rol         = db.Column(db.String(20), default='operador')
+    activo      = db.Column(db.Boolean, default=True)
+    reset_token = db.Column(db.String(100), nullable=True)
+
+    def set_password(self, password):
+        self.password = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password, password)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nombre': self.nombre,
+            'email': self.email,
+            'rol': self.rol,
+            'activo': self.activo
+        }
 
 class Producto(db.Model):
     __tablename__ = 'productos'
@@ -30,8 +57,7 @@ class Entrada(db.Model):
     cantidad    = db.Column(db.Integer, nullable=False)
     obs         = db.Column(db.String(200), default='')
     creado_en   = db.Column(db.DateTime, default=datetime.utcnow)
-
-    producto = db.relationship('Producto', backref='entradas')
+    producto    = db.relationship('Producto', backref='entradas')
 
     def to_dict(self):
         return {
@@ -49,14 +75,13 @@ class Salida(db.Model):
     __tablename__ = 'salidas'
     id          = db.Column(db.Integer, primary_key=True)
     fecha       = db.Column(db.String(20), nullable=False)
-    tipo        = db.Column(db.String(20), nullable=False)   # factura | ot | cambio
+    tipo        = db.Column(db.String(20), nullable=False)
     referencia  = db.Column(db.String(50), nullable=False)
     producto_id = db.Column(db.Integer, db.ForeignKey('productos.id'), nullable=False)
     cantidad    = db.Column(db.Integer, nullable=False)
     destino     = db.Column(db.String(100), default='')
     creado_en   = db.Column(db.DateTime, default=datetime.utcnow)
-
-    producto = db.relationship('Producto', backref='salidas')
+    producto    = db.relationship('Producto', backref='salidas')
 
     def to_dict(self):
         labels = {'factura': 'Factura', 'ot': 'Orden de Trabajo', 'cambio': 'Cambio'}

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockFlow — Iniciar Sesión</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a26;
+    --border: #2a2a3d; --accent: #00e5a0; --danger: #ff4d6d;
+    --text: #e8e8f0; --muted: #6b6b8a;
+    --font-display: 'Syne', sans-serif; --font-mono: 'DM Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-mono); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; }
+  .login-box { position: relative; z-index: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 48px 40px; width: 400px; max-width: 95vw; animation: fadeIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+  .logo { text-align: center; margin-bottom: 36px; }
+  .logo h1 { font-family: var(--font-display); font-size: 32px; font-weight: 800; }
+  .logo h1 span { color: var(--accent); }
+  .logo p { font-size: 11px; color: var(--muted); margin-top: 4px; letter-spacing: 2px; text-transform: uppercase; }
+  .form-group { margin-bottom: 18px; }
+  .form-group label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 8px; }
+  .form-group input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; color: var(--text); font-family: var(--font-mono); font-size: 14px; outline: none; transition: border-color 0.2s; }
+  .form-group input:focus { border-color: var(--accent); }
+  .btn-login { width: 100%; padding: 13px; background: var(--accent); color: #000; border: none; border-radius: 8px; font-family: var(--font-display); font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: all 0.2s; }
+  .btn-login:hover { background: #00ffb3; transform: translateY(-1px); }
+  .error-msg { background: rgba(255,77,109,0.1); border: 1px solid rgba(255,77,109,0.3); color: var(--danger); border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 18px; display: none; }
+  .error-msg.show { display: block; }
+  .success-msg { background: rgba(0,229,160,0.1); border: 1px solid rgba(0,229,160,0.3); color: var(--accent); border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 18px; display: none; }
+  .success-msg.show { display: block; }
+  .forgot-link { text-align: center; margin-top: 16px; font-size: 12px; color: var(--muted); cursor: pointer; transition: color 0.2s; }
+  .forgot-link:hover { color: var(--accent); }
+  .view { display: block; }
+  .view.hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="login-box">
+  <div class="logo">
+    <h1>Stock<span>Flow</span></h1>
+    <p>Sistema de Inventario</p>
+  </div>
+
+  <!-- LOGIN VIEW -->
+  <div id="view-login" class="view">
+    <div class="error-msg" id="login-error"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="email" placeholder="tu@email.com" autofocus>
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="password" placeholder="••••••••" onkeydown="if(event.key==='Enter') login()">
+    </div>
+    <button class="btn-login" onclick="login()">Ingresar</button>
+    <div class="forgot-link" onclick="showForgot()">¿Olvidaste tu contraseña?</div>
+  </div>
+
+  <!-- FORGOT VIEW -->
+  <div id="view-forgot" class="view hidden">
+    <div class="error-msg" id="forgot-error"></div>
+    <div class="success-msg" id="forgot-success"></div>
+    <div class="form-group">
+      <label>Tu Email</label>
+      <input type="email" id="forgot-email" placeholder="tu@email.com">
+    </div>
+    <button class="btn-login" onclick="recuperar()">Enviar link de recuperación</button>
+    <div class="forgot-link" onclick="showLogin()">← Volver al login</div>
+  </div>
+</div>
+
+<script>
+  function showForgot() {
+    document.getElementById('view-login').classList.add('hidden');
+    document.getElementById('view-forgot').classList.remove('hidden');
+  }
+  function showLogin() {
+    document.getElementById('view-forgot').classList.add('hidden');
+    document.getElementById('view-login').classList.remove('hidden');
+  }
+
+  async function login() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const errMsg = document.getElementById('login-error');
+    errMsg.classList.remove('show');
+    if (!email || !password) { errMsg.textContent = 'Completa todos los campos'; errMsg.classList.add('show'); return; }
+    try {
+      const res = await fetch('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+      const data = await res.json();
+      if (!res.ok) { errMsg.textContent = data.error || 'Error al iniciar sesión'; errMsg.classList.add('show'); return; }
+      window.location.href = '/';
+    } catch(e) { errMsg.textContent = 'Error de conexión'; errMsg.classList.add('show'); }
+  }
+
+  async function recuperar() {
+    const email = document.getElementById('forgot-email').value.trim();
+    const errMsg = document.getElementById('forgot-error');
+    const succMsg = document.getElementById('forgot-success');
+    errMsg.classList.remove('show');
+    succMsg.classList.remove('show');
+    if (!email) { errMsg.textContent = 'Ingresa tu email'; errMsg.classList.add('show'); return; }
+    try {
+      const res = await fetch('/auth/recuperar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+      succMsg.textContent = 'Si el email existe, recibirás un link en tu correo.';
+      succMsg.classList.add('show');
+    } catch(e) { errMsg.textContent = 'Error de conexión'; errMsg.classList.add('show'); }
+  }
+</script>
+</body>
+</html>

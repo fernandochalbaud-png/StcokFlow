@@ -493,6 +493,13 @@
     <div class="nav-item" onclick="showPage('reportes')">
       <span class="icon">◈</span> Reportes
     </div>
+    <span class="nav-section admin-only" style="display:none">Administración</span>
+    <div class="nav-item admin-only" style="display:none" onclick="showPage('usuarios')">
+      <span class="icon">👤</span> Usuarios
+    </div>
+    <div class="nav-item" onclick="cerrarSesion()" style="margin-top:auto;color:var(--danger)">
+      <span class="icon">⏻</span> Cerrar Sesión
+    </div>
   </aside>
 
   <!-- MAIN -->
@@ -761,6 +768,25 @@
         </div>
       </div>
     </div>
+    <!-- USUARIOS -->
+    <div class="page" id="page-usuarios">
+      <div class="panel panel-full">
+        <div class="panel-header">
+          <h3>👤 Gestión de Usuarios</h3>
+          <button class="btn btn-primary" onclick="openModal('modal-usuario')">+ Nuevo Usuario</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr>
+            </thead>
+            <tbody id="usuarios-tbody">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -806,6 +832,45 @@
   </div>
 </div>
 
+<!-- MODAL NUEVO USUARIO -->
+<div class="modal-overlay" id="modal-usuario">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>+ Nuevo Usuario</h3>
+      <button class="modal-close" onclick="closeModal('modal-usuario')">✕</button>
+    </div>
+    <div class="form-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre *</label>
+          <input type="text" id="usr-nombre" placeholder="Nombre completo">
+        </div>
+        <div class="form-group">
+          <label>Email *</label>
+          <input type="email" id="usr-email" placeholder="correo@email.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Contraseña *</label>
+          <input type="password" id="usr-password" placeholder="Mínimo 6 caracteres">
+        </div>
+        <div class="form-group">
+          <label>Rol</label>
+          <select id="usr-rol">
+            <option value="operador">Operador</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-usuario')">Cancelar</button>
+        <button class="btn btn-primary" onclick="crearUsuario()">Crear Usuario</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast">
   <span id="toast-icon">✓</span>
@@ -833,7 +898,8 @@
     entrada: 'Entradas <span>/ Ingreso</span>',
     salida: 'Salidas <span>/ Despacho</span>',
     historial: 'Historial <span>/ Movimientos</span>',
-    reportes: 'Reportes <span>/ Estadísticas</span>'
+    reportes: 'Reportes <span>/ Estadísticas</span>',
+    usuarios: 'Usuarios <span>/ Gestión</span>'
   };
 
   function showPage(name) {
@@ -849,6 +915,7 @@
     if (name === 'dashboard') updateDashboard();
     if (name === 'reportes') updateReportes();
     if (name === 'historial') renderHistorialCompleto();
+    if (name === 'usuarios') cargarUsuarios();
   }
 
   // ===== MODAL =====
@@ -1173,9 +1240,78 @@
     }
   }
 
+  // ===== USUARIOS =====
+  async function cargarUsuarios() {
+    const usuarios = await api('/api/usuarios/');
+    renderUsuarios(usuarios);
+  }
+
+  function renderUsuarios(usuarios) {
+    const tbody = document.getElementById('usuarios-tbody');
+    if (!usuarios.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px">Sin usuarios</td></tr>';
+      return;
+    }
+    tbody.innerHTML = usuarios.map(u => `<tr>
+      <td><strong>${u.nombre}</strong></td>
+      <td>${u.email}</td>
+      <td><span class="badge ${u.rol === 'admin' ? 'badge-purple' : 'badge-green'}">${u.rol}</span></td>
+      <td>${u.activo ? '<span class="badge badge-green">Activo</span>' : '<span class="badge badge-red">Inactivo</span>'}</td>
+      <td>
+        <button class="btn btn-danger" onclick="toggleUsuario(${u.id}, ${u.activo})">
+          ${u.activo ? 'Desactivar' : 'Activar'}
+        </button>
+      </td>
+    </tr>`).join('');
+  }
+
+  async function crearUsuario() {
+    const nombre   = document.getElementById('usr-nombre').value.trim();
+    const email    = document.getElementById('usr-email').value.trim();
+    const password = document.getElementById('usr-password').value;
+    const rol      = document.getElementById('usr-rol').value;
+    if (!nombre || !email || !password) return showToast('Completa todos los campos', true);
+    try {
+      await api('/api/usuarios/', 'POST', { nombre, email, password, rol });
+      showToast(`Usuario "${nombre}" creado`);
+      closeModal('modal-usuario');
+      ['usr-nombre','usr-email','usr-password'].forEach(id => document.getElementById(id).value = '');
+      cargarUsuarios();
+    } catch(e) { showToast(e.message, true); }
+  }
+
+  async function toggleUsuario(id, activo) {
+    try {
+      await api(`/api/usuarios/${id}`, 'PUT', { activo: !activo });
+      showToast(activo ? 'Usuario desactivado' : 'Usuario activado');
+      cargarUsuarios();
+    } catch(e) { showToast(e.message, true); }
+  }
+
+  async function cerrarSesion() {
+    await api('/auth/logout', 'POST');
+    window.location.href = '/login';
+  }
+
   // Init on load
   window.addEventListener('DOMContentLoaded', async () => {
     document.querySelector('.nav-item').classList.add('active');
+
+    // Cargar usuario actual y aplicar roles
+    try {
+      const usuario = await api('/auth/me');
+      state.usuario = usuario;
+
+      // Actualizar badge de usuario
+      document.querySelector('.avatar').textContent = usuario.nombre.substring(0,2).toUpperCase();
+      document.querySelector('.user-badge span').textContent = usuario.nombre;
+
+      // Mostrar sección admin si corresponde
+      if (usuario.rol === 'admin') {
+        document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+      }
+    } catch(e) {}
+
     await cargarProductos();
     await cargarEntradas();
     await cargarSalidas();
