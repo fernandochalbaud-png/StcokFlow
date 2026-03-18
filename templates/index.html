@@ -454,6 +454,31 @@
     color: var(--warning);
   }
 
+  /* HAMBURGER BUTTON */
+  .hamburger {
+    display: none;
+    position: fixed;
+    top: 16px; left: 16px;
+    z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 18px;
+    color: var(--text);
+  }
+
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 149;
+  }
+
+  .sidebar-overlay.open { display: block; }
+
   /* RESPONSIVE */
   @media (max-width: 900px) {
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -461,14 +486,52 @@
     .form-row { grid-template-columns: 1fr; }
     .form-row.three { grid-template-columns: 1fr; }
   }
+
+  @media (max-width: 768px) {
+    .hamburger { display: block; }
+
+    .sidebar {
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      z-index: 150;
+    }
+
+    .sidebar.open { transform: translateX(0); }
+
+    .main {
+      margin-left: 0;
+      padding: 20px 16px;
+      padding-top: 64px;
+    }
+
+    .topbar { margin-bottom: 20px; }
+    .page-title { font-size: 20px; }
+
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .panels { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    .form-row.three { grid-template-columns: 1fr; }
+
+    .panel-header { flex-wrap: wrap; gap: 10px; }
+    .panel-header div { flex-wrap: wrap; }
+
+    table { font-size: 12px; }
+    th, td { padding: 10px 12px; }
+
+    .modal { width: 95vw; }
+  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
 <div class="app">
+  <!-- HAMBURGER -->
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
   <!-- SIDEBAR -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="logo">
       <h1>Stock<span>Flow</span></h1>
       <p>Sistema de Inventario</p>
@@ -1478,6 +1541,24 @@ Esta acción no se puede deshacer.`)) return;
   async function cerrarSesion() {
     await api('/auth/logout', 'POST');
     window.location.href = '/login';
+  }
+
+  // ===== SIDEBAR MOBILE =====
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebar-overlay').classList.toggle('open');
+  }
+
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('open');
+  }
+
+  // Close sidebar when nav item clicked on mobile
+  const origShowPage = showPage;
+  function showPage(name) {
+    origShowPage(name);
+    if (window.innerWidth <= 768) closeSidebar();
   }
 
   // Init on load
