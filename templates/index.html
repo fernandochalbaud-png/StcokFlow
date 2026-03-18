@@ -722,6 +722,19 @@
       <div class="panel panel-full">
         <div class="panel-header">
           <h3>Historial Completo de Movimientos</h3>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:6px">
+              <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Desde</label>
+              <input type="date" id="hist-desde" oninput="filtrarHistorial()"
+                style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none">
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Hasta</label>
+              <input type="date" id="hist-hasta" oninput="filtrarHistorial()"
+                style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none">
+            </div>
+            <button class="btn btn-ghost" onclick="limpiarFiltroHistorial()" style="font-size:12px">Limpiar</button>
+          </div>
         </div>
         <div id="historial-completo">
           <div style="padding:32px;text-align:center;color:var(--muted)">Sin movimientos</div>
@@ -1204,6 +1217,26 @@ Esta acción no se puede deshacer.`)) return;
   }
 
   // ===== HISTORIAL =====
+  function filtrarHistorial() {
+    const desde = document.getElementById('hist-desde').value;
+    const hasta = document.getElementById('hist-hasta').value;
+    const items = document.querySelectorAll('#historial-completo .history-item');
+    items.forEach(item => {
+      const fecha = item.querySelector('.hist-time') ? item.querySelector('.hist-time').textContent.trim() : '';
+      let mostrar = true;
+      if (desde && fecha < desde) mostrar = false;
+      if (hasta && fecha > hasta) mostrar = false;
+      item.style.display = mostrar ? '' : 'none';
+    });
+  }
+
+  function limpiarFiltroHistorial() {
+    document.getElementById('hist-desde').value = '';
+    document.getElementById('hist-hasta').value = '';
+    document.querySelectorAll('#historial-completo .history-item').forEach(item => {
+      item.style.display = '';
+    });
+  }
   function renderHistorialCompleto() {
     const el = document.getElementById('historial-completo');
     if (!state.historial.length) {
