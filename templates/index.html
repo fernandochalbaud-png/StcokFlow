@@ -580,6 +580,7 @@
                 <th>Mínimo</th>
                 <th>Estado</th>
                 <th>Nivel</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody id="inventario-tbody">
@@ -876,6 +877,43 @@
   </div>
 </div>
 
+<!-- MODAL EDITAR PRODUCTO -->
+<div class="modal-overlay" id="modal-editar-producto">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>✏ Editar Producto</h3>
+      <button class="modal-close" onclick="closeModal('modal-editar-producto')">✕</button>
+    </div>
+    <div class="form-body">
+      <input type="hidden" id="edit-prod-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Código</label>
+          <input type="text" id="edit-prod-codigo" disabled style="opacity:0.5">
+        </div>
+        <div class="form-group">
+          <label>Nombre *</label>
+          <input type="text" id="edit-prod-nombre" placeholder="Nombre del producto">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Categoría</label>
+          <input type="text" id="edit-prod-categoria" placeholder="Categoría">
+        </div>
+        <div class="form-group">
+          <label>Stock Mínimo *</label>
+          <input type="number" id="edit-prod-minimo" placeholder="0" min="0">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-editar-producto')">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarEdicionProducto()">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast">
   <span id="toast-icon">✓</span>
@@ -984,6 +1022,46 @@
     });
   }
 
+  function abrirEditarProducto(id) {
+    const p = state.productos.find(p => p.id === id);
+    if (!p) return;
+    document.getElementById('edit-prod-id').value = p.id;
+    document.getElementById('edit-prod-codigo').value = p.codigo;
+    document.getElementById('edit-prod-nombre').value = p.nombre;
+    document.getElementById('edit-prod-categoria').value = p.categoria;
+    document.getElementById('edit-prod-minimo').value = p.minimo;
+    openModal('modal-editar-producto');
+  }
+
+  async function guardarEdicionProducto() {
+    const id       = document.getElementById('edit-prod-id').value;
+    const nombre   = document.getElementById('edit-prod-nombre').value.trim();
+    const categoria= document.getElementById('edit-prod-categoria').value.trim();
+    const minimo   = parseInt(document.getElementById('edit-prod-minimo').value);
+    if (!nombre) return showToast('El nombre es requerido', true);
+    try {
+      const p = await api(`/api/productos/${id}`, 'PUT', { nombre, categoria, minimo });
+      const idx = state.productos.findIndex(x => x.id == id);
+      if (idx !== -1) state.productos[idx] = p;
+      actualizarSelectores();
+      renderInventario();
+      closeModal('modal-editar-producto');
+      showToast(`Producto ${p.nombre} actualizado`);
+    } catch(e) { showToast(e.message, true); }
+  }
+
+  async function eliminarProducto(id, nombre) {
+    if (!confirm(`¿Estás seguro que quieres eliminar ${nombre}?
+Esta acción no se puede deshacer.`)) return;
+    try {
+      await api(`/api/productos/${id}`, 'DELETE');
+      state.productos = state.productos.filter(p => p.id !== id);
+      actualizarSelectores();
+      renderInventario();
+      showToast(`Producto ${nombre} eliminado`);
+    } catch(e) { showToast(e.message, true); }
+  }
+
   function actualizarSelectores() {
     const opts = state.productos.map(p => `<option value="${p.id}">${p.codigo} — ${p.nombre}</option>`).join('');
     document.getElementById('ent-producto').innerHTML = '<option value="">— Seleccionar —</option>' + opts;
@@ -1004,6 +1082,7 @@
         : p.stock <= p.minimo
           ? '<span class="badge badge-yellow">Stock bajo</span>'
           : '<span class="badge badge-green">Normal</span>';
+      const esAdmin = state.usuario && state.usuario.rol === 'admin';
       return `<tr>
         <td><span style="color:var(--muted);font-size:11px">${p.codigo}</span></td>
         <td><strong>${p.nombre}</strong></td>
@@ -1017,6 +1096,10 @@
             <span style="font-size:10px;color:var(--muted)">${pct}%</span>
           </div>
         </td>
+        ${esAdmin ? `<td style="display:flex;gap:6px">
+          <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="abrirEditarProducto(${p.id})">✏ Editar</button>
+          <button class="btn btn-danger" style="font-size:11px;padding:5px 10px" onclick="eliminarProducto(${p.id}, '${p.nombre}')">✕</button>
+        </td>` : '<td></td>'}
       </tr>`;
     }).join('');
   }
