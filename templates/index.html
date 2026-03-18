@@ -462,6 +462,7 @@
     .form-row.three { grid-template-columns: 1fr; }
   }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -566,6 +567,10 @@
             <input type="text" id="buscar-inventario" placeholder="🔍 Buscar producto..." oninput="filtrarInventario()"
               style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none;width:220px;transition:border-color 0.2s"
               onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+            <button class="btn btn-ghost" onclick="exportarInventario()">⬇ Exportar</button>
+            <button class="btn btn-ghost admin-only" style="display:none" onclick="descargarPlantilla()">📋 Plantilla</button>
+            <button class="btn btn-ghost admin-only" style="display:none" onclick="document.getElementById('import-excel').click()">⬆ Importar Excel</button>
+            <input type="file" id="import-excel" accept=".xlsx" style="display:none" onchange="importarExcel(this)">
             <button class="btn btn-primary" onclick="openModal('modal-producto')">+ Nuevo Producto</button>
           </div>
         </div>
@@ -734,6 +739,7 @@
                 style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none">
             </div>
             <button class="btn btn-ghost" onclick="limpiarFiltroHistorial()" style="font-size:12px">Limpiar</button>
+            <button class="btn btn-ghost" onclick="exportarHistorial()" style="font-size:12px">⬇ Excel</button>
           </div>
         </div>
         <div id="historial-completo">
@@ -1024,6 +1030,57 @@
     state.productos = await api('/api/productos/');
     actualizarSelectores();
     renderInventario();
+  }
+
+  function descargarPlantilla() {
+    window.location.href = '/api/productos/plantilla';
+  }
+
+  async function importarExcel(input) {
+    const archivo = input.files[0];
+    if (!archivo) return;
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    try {
+      const res = await fetch('/api/productos/importar', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error, true); return; }
+      showToast(`✓ ${data.creados} productos importados, ${data.omitidos} omitidos`);
+      await cargarProductos();
+    } catch(e) { showToast('Error al importar', true); }
+    input.value = '';
+  }
+
+  function exportarInventario() {
+    const datos = state.productos.map(p => ({
+      'Código': p.codigo,
+      'Producto': p.nombre,
+      'Categoría': p.categoria,
+      'Stock': p.stock,
+      'Mínimo': p.minimo,
+      'Estado': p.stock === 0 ? 'Sin stock' : p.stock <= p.minimo ? 'Stock bajo' : 'Normal'
+    }));
+    const ws = XLSX.utils.json_to_sheet(datos);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
+    XLSX.writeFile(wb, 'inventario_stockflow.xlsx');
+    showToast('Inventario exportado a Excel');
+  }
+
+  function exportarHistorial() {
+    const datos = state.historial.map(h => ({
+      'Fecha': h.fecha,
+      'Tipo': h.tipo === 'entrada' ? 'Entrada' : 'Salida',
+      'Referencia': h.tipo === 'entrada' ? h.factura : h.referencia,
+      'Proveedor/Destino': h.tipo === 'entrada' ? h.proveedor : (h.destino || '-'),
+      'Producto': h.producto,
+      'Cantidad': h.tipo === 'entrada' ? h.cantidad : -h.cantidad
+    }));
+    const ws = XLSX.utils.json_to_sheet(datos);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Historial');
+    XLSX.writeFile(wb, 'historial_stockflow.xlsx');
+    showToast('Historial exportado a Excel');
   }
 
   function filtrarInventario() {
