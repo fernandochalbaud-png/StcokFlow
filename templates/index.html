@@ -522,6 +522,7 @@
   }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -855,6 +856,22 @@
           </div>
         </div>
       </div>
+
+      <!-- GRAFICOS -->
+      <div class="panels" style="margin-top:20px">
+        <div class="panel">
+          <div class="panel-header"><h3>Entradas vs Salidas por Mes</h3></div>
+          <div style="padding:20px">
+            <canvas id="chart-movimientos" height="200"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h3>Stock por Categoría</h3></div>
+          <div style="padding:20px">
+            <canvas id="chart-categorias" height="200"></canvas>
+          </div>
+        </div>
+      </div>
     </div>
     <!-- USUARIOS -->
     <div class="page" id="page-usuarios">
@@ -1038,9 +1055,10 @@
     });
     document.getElementById('pageTitle').innerHTML = pageTitles[name] || name;
     if (name === 'dashboard') updateDashboard();
-    if (name === 'reportes') updateReportes();
+    if (name === 'reportes') { updateReportes(); renderGraficos(); }
     if (name === 'historial') renderHistorialCompleto();
     if (name === 'usuarios') cargarUsuarios();
+    if (window.innerWidth <= 768) closeSidebar();
   }
 
   // ===== MODAL =====
@@ -1428,6 +1446,84 @@ Esta acción no se puede deshacer.`)) return;
       : '<div style="padding:24px;color:var(--muted);font-size:13px;text-align:center">Sin movimientos</div>';
   }
 
+  // ===== GRAFICOS =====
+  let chartMovimientos = null;
+  let chartCategorias = null;
+
+  function renderGraficos() {
+    // Chart 1: Entradas vs Salidas por mes
+    const meses = {};
+    state.entradas.forEach(e => {
+      const mes = e.fecha ? e.fecha.substring(0, 7) : 'Sin fecha';
+      if (!meses[mes]) meses[mes] = { entradas: 0, salidas: 0 };
+      meses[mes].entradas += e.cantidad;
+    });
+    state.salidas.forEach(s => {
+      const mes = s.fecha ? s.fecha.substring(0, 7) : 'Sin fecha';
+      if (!meses[mes]) meses[mes] = { entradas: 0, salidas: 0 };
+      meses[mes].salidas += s.cantidad;
+    });
+
+    const labels = Object.keys(meses).sort();
+    const entradas = labels.map(m => meses[m].entradas);
+    const salidas  = labels.map(m => meses[m].salidas);
+
+    const ctx1 = document.getElementById('chart-movimientos');
+    if (chartMovimientos) chartMovimientos.destroy();
+    chartMovimientos = new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Entradas', data: entradas, backgroundColor: 'rgba(0,229,160,0.7)', borderColor: '#00e5a0', borderWidth: 1 },
+          { label: 'Salidas',  data: salidas,  backgroundColor: 'rgba(255,77,109,0.7)', borderColor: '#ff4d6d', borderWidth: 1 }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#e8e8f0' } } },
+        scales: {
+          x: { ticks: { color: '#6b6b8a' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#6b6b8a' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+
+    // Chart 2: Stock por categoria
+    const cats = {};
+    state.productos.forEach(p => {
+      cats[p.categoria] = (cats[p.categoria] || 0) + p.stock;
+    });
+    const catLabels = Object.keys(cats);
+    const catData   = catLabels.map(c => cats[c]);
+    const colors    = ['#00e5a0','#7c5cfc','#ffb830','#ff4d6d','#00b4d8','#fb5607','#8338ec','#3a86ff'];
+
+    const ctx2 = document.getElementById('chart-categorias');
+    if (chartCategorias) chartCategorias.destroy();
+    chartCategorias = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: catLabels,
+        datasets: [{
+          label: 'Stock total',
+          data: catData,
+          backgroundColor: catLabels.map((_, i) => colors[i % colors.length] + 'b3'),
+          borderColor: catLabels.map((_, i) => colors[i % colors.length]),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#6b6b8a' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#e8e8f0', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+  }
+
   // ===== REPORTES =====
   function updateReportes() {
     const totalStock = state.productos.reduce((s, p) => s + p.stock, 0);
@@ -1554,12 +1650,7 @@ Esta acción no se puede deshacer.`)) return;
     document.getElementById('sidebar-overlay').classList.remove('open');
   }
 
-  // Close sidebar when nav item clicked on mobile
-  const origShowPage = showPage;
-  function showPage(name) {
-    origShowPage(name);
-    if (window.innerWidth <= 768) closeSidebar();
-  }
+
 
   // Init on load
   window.addEventListener('DOMContentLoaded', async () => {
