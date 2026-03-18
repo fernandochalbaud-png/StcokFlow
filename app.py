@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_login import LoginManager
 from flask_mail import Mail
+from flask_migrate import Migrate
 from database import db
 from dotenv import load_dotenv
 import os
@@ -21,6 +22,11 @@ if database_url.startswith('postgres://'):
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'stockflow-secret-2024')
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_size': 5,
+    'pool_recycle': 300,
+    'pool_pre_ping': True
+}
 
 # Mail config
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -30,6 +36,7 @@ app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 
 db.init_app(app)
+migrate = Migrate(app, db)
 mail = Mail(app)
 
 login_manager = LoginManager()
