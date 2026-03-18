@@ -562,7 +562,12 @@
       <div class="panel panel-full">
         <div class="panel-header">
           <h3>Stock Actual</h3>
-          <button class="btn btn-primary" onclick="openModal('modal-producto')">+ Nuevo Producto</button>
+          <div style="display:flex;gap:10px;align-items:center">
+            <input type="text" id="buscar-inventario" placeholder="🔍 Buscar producto..." oninput="filtrarInventario()"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none;width:220px;transition:border-color 0.2s"
+              onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+            <button class="btn btn-primary" onclick="openModal('modal-producto')">+ Nuevo Producto</button>
+          </div>
         </div>
         <div class="table-wrap">
           <table>
@@ -968,6 +973,15 @@
     state.productos = await api('/api/productos/');
     actualizarSelectores();
     renderInventario();
+  }
+
+  function filtrarInventario() {
+    const query = document.getElementById('buscar-inventario').value.toLowerCase();
+    const filas = document.querySelectorAll('#inventario-tbody tr');
+    filas.forEach(fila => {
+      const texto = fila.textContent.toLowerCase();
+      fila.style.display = texto.includes(query) ? '' : 'none';
+    });
   }
 
   function actualizarSelectores() {
