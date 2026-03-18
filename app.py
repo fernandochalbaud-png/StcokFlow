@@ -9,9 +9,18 @@ load_dotenv()
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///stockflow.db'
+# Base de datos:
+# - En Railway usa DATABASE_URL (PostgreSQL)
+# - En local usa SQLite
+database_url = os.getenv('DATABASE_URL', 'sqlite:///stockflow.db')
+
+# Railway usa 'postgres://' pero SQLAlchemy necesita 'postgresql://'
+if database_url.startswith('postgres://'):
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'stockflow-secret-2024'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'stockflow-secret-2024')
 
 # Mail config
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
