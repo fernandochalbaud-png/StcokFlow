@@ -116,6 +116,8 @@ def actualizar(id):
     if current_user.rol not in ['admin', 'god']:
         return jsonify({'error': 'Sin permiso'}), 403
     p = Producto.query.get_or_404(id)
+    if current_user.rol != 'god' and p.empresa_id != current_user.empresa_id:
+        return jsonify({'error': 'Sin permiso sobre este producto'}), 403
     data = request.json
     p.nombre    = data.get('nombre', p.nombre)
     p.categoria = data.get('categoria', p.categoria)
@@ -129,6 +131,8 @@ def eliminar(id):
     if current_user.rol not in ['admin', 'god']:
         return jsonify({'error': 'Sin permiso'}), 403
     p = Producto.query.get_or_404(id)
+    if current_user.rol != 'god' and p.empresa_id != current_user.empresa_id:
+        return jsonify({'error': 'Sin permiso sobre este producto'}), 403
     db.session.delete(p)
     db.session.commit()
     return jsonify({'ok': True})

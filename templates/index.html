@@ -1060,6 +1060,99 @@
     </div>
   </div>
 </div>
+<!-- MODAL USUARIOS EMPRESA -->
+<div class="modal-overlay" id="modal-usuarios-empresa">
+  <div class="modal" style="width:680px">
+    <div class="modal-header">
+      <h3 id="usuarios-empresa-titulo">Usuarios</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-primary" onclick="abrirNuevoUsuarioEmpresa()">+ Nuevo Usuario</button>
+        <button class="modal-close" onclick="closeModal('modal-usuarios-empresa')">✕</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Rol</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="usuarios-empresa-tbody">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <input type="hidden" id="nueva-usuario-empresa-id">
+  </div>
+</div>
+
+<!-- MODAL RESET PASSWORD -->
+<div class="modal-overlay" id="modal-reset-password">
+  <div class="modal" style="width:420px">
+    <div class="modal-header">
+      <h3>🔑 Resetear Contraseña</h3>
+      <button class="modal-close" onclick="closeModal('modal-reset-password')">✕</button>
+    </div>
+    <div class="form-body">
+      <input type="hidden" id="reset-usuario-id">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+        Asignando nueva contraseña a: <strong id="reset-usuario-nombre" style="color:var(--text)"></strong>
+      </p>
+      <div class="form-group">
+        <label>Nueva Contraseña *</label>
+        <input type="password" id="reset-password-input" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-reset-password')">Cancelar</button>
+        <button class="btn btn-primary" onclick="resetPassword()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVO USUARIO EMPRESA -->
+<div class="modal-overlay" id="modal-nuevo-usuario-empresa">
+  <div class="modal" style="width:480px">
+    <div class="modal-header">
+      <h3>+ Nuevo Usuario</h3>
+      <button class="modal-close" onclick="closeModal('modal-nuevo-usuario-empresa')">✕</button>
+    </div>
+    <div class="form-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre *</label>
+          <input type="text" id="nuevo-usr-nombre" placeholder="Nombre completo">
+        </div>
+        <div class="form-group">
+          <label>Email *</label>
+          <input type="email" id="nuevo-usr-email" placeholder="correo@email.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Contraseña *</label>
+          <input type="password" id="nuevo-usr-password" placeholder="Mínimo 6 caracteres">
+        </div>
+        <div class="form-group">
+          <label>Rol</label>
+          <select id="nuevo-usr-rol">
+            <option value="operador">Operador</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-nuevo-usuario-empresa')">Cancelar</button>
+        <button class="btn btn-primary" onclick="crearUsuarioEmpresa()">Crear Usuario</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- MODAL EDITAR PRODUCTO -->
 <div class="modal-overlay" id="modal-editar-producto">
@@ -1739,7 +1832,8 @@ Esta acción no se puede deshacer.`)) return;
       <td>${e.activo ? '<span class="badge badge-green">Activa</span>' : '<span class="badge badge-red">Inactiva</span>'}</td>
       <td>${e.creado_en ? e.creado_en.substring(0,10) : '-'}</td>
       <td style="display:flex;gap:8px">
-        <button class="btn btn-ghost" onclick="verLogsEmpresa(${e.id}, '${e.nombre}')">📋 Historial</button>
+        <button class="btn btn-ghost" onclick="verUsuariosEmpresa(${e.id}, '${e.nombre}')">👥 Usuarios</button>
+        <button class="btn btn-ghost" onclick="verLogsEmpresa(${e.id}, '${e.nombre}')">📋 Historial</button>on>
         <button class="btn btn-danger" onclick="toggleEmpresa(${e.id}, ${e.activo})">
           ${e.activo ? 'Desactivar' : 'Activar'}
         </button>
@@ -1784,7 +1878,73 @@ Esta acción no se puede deshacer.`)) return;
       openModal('modal-logs-empresa');
     } catch(e) { showToast(e.message, true); }
   }
+  async function verUsuariosEmpresa(id, nombre) {
+    try {
+      const usuarios = await api(`/api/usuarios/?empresa_id=${id}`);
+      const tbody = document.getElementById('usuarios-empresa-tbody');
+      const titulo = document.getElementById('usuarios-empresa-titulo');
+      titulo.textContent = `Usuarios — ${nombre}`;
+      tbody.innerHTML = usuarios.length
+        ? usuarios.map(u => `<tr>
+            <td><strong>${u.nombre}</strong></td>
+            <td>${u.email}</td>
+            <td><span class="badge ${u.rol === 'admin' ? 'badge-purple' : 'badge-green'}">${u.rol}</span></td>
+            <td>${u.activo ? '<span class="badge badge-green">Activo</span>' : '<span class="badge badge-red">Inactivo</span>'}</td>
+            <td>
+              <button class="btn btn-ghost" onclick="abrirResetPassword(${u.id}, '${u.nombre}')">🔑 Reset</button>
+            </td>
+          </tr>`).join('')
+        : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Sin usuarios</td></tr>';
+        document.getElementById('nueva-usuario-empresa-id').value = id;
+      openModal('modal-usuarios-empresa');
+    } catch(e) { showToast(e.message, true); }
+  }
 
+  async function abrirResetPassword(id, nombre) {
+    document.getElementById('reset-usuario-id').value = id;
+    document.getElementById('reset-usuario-nombre').textContent = nombre;
+    document.getElementById('reset-password-input').value = '';
+    closeModal('modal-usuarios-empresa');
+    openModal('modal-reset-password');
+  }
+
+  async function resetPassword() {
+    const id = document.getElementById('reset-usuario-id').value;
+    const password = document.getElementById('reset-password-input').value;
+    if (!password) return showToast('Ingresa una contraseña', true);
+    if (password.length < 6) return showToast('Mínimo 6 caracteres', true);
+    try {
+      await api(`/api/usuarios/${id}/reset-password`, 'PUT', { password });
+      showToast('Contraseña actualizada');
+      closeModal('modal-reset-password');
+    } catch(e) { showToast(e.message, true); }
+  }
+function abrirNuevoUsuarioEmpresa() {
+    document.getElementById('nuevo-usr-nombre').value = '';
+    document.getElementById('nuevo-usr-email').value = '';
+    document.getElementById('nuevo-usr-password').value = '';
+    document.getElementById('nuevo-usr-rol').value = 'operador';
+    closeModal('modal-usuarios-empresa');
+    openModal('modal-nuevo-usuario-empresa');
+  }
+
+  async function crearUsuarioEmpresa() {
+    const empresa_id = document.getElementById('nueva-usuario-empresa-id').value;
+    const nombre     = document.getElementById('nuevo-usr-nombre').value.trim();
+    const email      = document.getElementById('nuevo-usr-email').value.trim();
+    const password   = document.getElementById('nuevo-usr-password').value;
+    const rol        = document.getElementById('nuevo-usr-rol').value;
+    if (!nombre || !email || !password) return showToast('Completa todos los campos', true);
+    try {
+      await api('/api/usuarios/', 'POST', { nombre, email, password, rol, empresa_id: parseInt(empresa_id) });
+      showToast(`Usuario "${nombre}" creado`);
+      closeModal('modal-nuevo-usuario-empresa');
+      // Reabrir modal de usuarios de la empresa
+      const titulo = document.getElementById('usuarios-empresa-titulo').textContent;
+      const empNombre = titulo.replace('Usuarios — ', '');
+      verUsuariosEmpresa(parseInt(empresa_id), empNombre);
+    } catch(e) { showToast(e.message, true); }
+  }
   // ===== SIDEBAR MOBILE =====
   function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('open');

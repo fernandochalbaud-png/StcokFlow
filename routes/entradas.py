@@ -20,10 +20,17 @@ def crear():
     data = request.json
     if not data.get('factura') or not data.get('proveedor') or not data.get('producto_id') or not data.get('cantidad'):
         return jsonify({'error': 'Faltan campos requeridos'}), 400
+
     prod = Producto.query.get_or_404(data['producto_id'])
+
+    # Verificar que el producto pertenece a la empresa del usuario
+    if current_user.rol != 'god' and prod.empresa_id != current_user.empresa_id:
+        return jsonify({'error': 'Sin permiso sobre este producto'}), 403
+
     cantidad = int(data['cantidad'])
     if cantidad <= 0:
         return jsonify({'error': 'La cantidad debe ser mayor a 0'}), 400
+
     prod.stock += cantidad
     e = Entrada(
         fecha=data.get('fecha', ''), factura=data['factura'],
