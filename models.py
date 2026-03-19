@@ -3,15 +3,36 @@ from datetime import datetime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
+class Empresa(db.Model):
+    __tablename__ = 'empresas'
+    id         = db.Column(db.Integer, primary_key=True)
+    nombre     = db.Column(db.String(100), nullable=False)
+    email      = db.Column(db.String(120), unique=True, nullable=False)
+    activo     = db.Column(db.Boolean, default=True)
+    creado_en  = db.Column(db.DateTime, default=datetime.utcnow)
+
+    usuarios   = db.relationship('Usuario', backref='empresa', lazy=True)
+    productos  = db.relationship('Producto', backref='empresa', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nombre': self.nombre,
+            'email': self.email,
+            'activo': self.activo,
+            'creado_en': str(self.creado_en)
+        }
+
 class Usuario(UserMixin, db.Model):
     __tablename__ = 'usuarios'
     id          = db.Column(db.Integer, primary_key=True)
     nombre      = db.Column(db.String(100), nullable=False)
     email       = db.Column(db.String(120), unique=True, nullable=False)
     password    = db.Column(db.String(200), nullable=False)
-    rol         = db.Column(db.String(20), default='operador')
+    rol         = db.Column(db.String(20), default='operador')  # god | admin | operador
     activo      = db.Column(db.Boolean, default=True)
     reset_token = db.Column(db.String(100), nullable=True)
+    empresa_id  = db.Column(db.Integer, db.ForeignKey('empresas.id'), nullable=True)
 
     def set_password(self, password):
         self.password = generate_password_hash(password)
@@ -25,17 +46,22 @@ class Usuario(UserMixin, db.Model):
             'nombre': self.nombre,
             'email': self.email,
             'rol': self.rol,
-            'activo': self.activo
+            'activo': self.activo,
+            'empresa_id': self.empresa_id,
+            'empresa': self.empresa.nombre if self.empresa else None
         }
 
 class Producto(db.Model):
     __tablename__ = 'productos'
-    id       = db.Column(db.Integer, primary_key=True)
-    codigo   = db.Column(db.String(20), unique=True, nullable=False)
-    nombre   = db.Column(db.String(100), nullable=False)
-    categoria= db.Column(db.String(50), default='General')
-    stock    = db.Column(db.Integer, default=0)
-    minimo   = db.Column(db.Integer, default=0)
+    id         = db.Column(db.Integer, primary_key=True)
+    codigo     = db.Column(db.String(20), nullable=False)
+    nombre     = db.Column(db.String(100), nullable=False)
+    categoria  = db.Column(db.String(50), default='General')
+    stock      = db.Column(db.Integer, default=0)
+    minimo     = db.Column(db.Integer, default=0)
+    empresa_id = db.Column(db.Integer, db.ForeignKey('empresas.id'), nullable=True)
+
+    __table_args__ = (db.UniqueConstraint('codigo', 'empresa_id', name='uq_codigo_empresa'),)
 
     def to_dict(self):
         return {
@@ -44,7 +70,8 @@ class Producto(db.Model):
             'nombre': self.nombre,
             'categoria': self.categoria,
             'stock': self.stock,
-            'minimo': self.minimo
+            'minimo': self.minimo,
+            'empresa_id': self.empresa_id
         }
 
 class Entrada(db.Model):
@@ -56,6 +83,7 @@ class Entrada(db.Model):
     producto_id = db.Column(db.Integer, db.ForeignKey('productos.id'), nullable=False)
     cantidad    = db.Column(db.Integer, nullable=False)
     obs         = db.Column(db.String(200), default='')
+    empresa_id  = db.Column(db.Integer, db.ForeignKey('empresas.id'), nullable=True)
     creado_en   = db.Column(db.DateTime, default=datetime.utcnow)
     producto    = db.relationship('Producto', backref='entradas')
 
@@ -80,6 +108,7 @@ class Salida(db.Model):
     producto_id = db.Column(db.Integer, db.ForeignKey('productos.id'), nullable=False)
     cantidad    = db.Column(db.Integer, nullable=False)
     destino     = db.Column(db.String(100), default='')
+    empresa_id  = db.Column(db.Integer, db.ForeignKey('empresas.id'), nullable=True)
     creado_en   = db.Column(db.DateTime, default=datetime.utcnow)
     producto    = db.relationship('Producto', backref='salidas')
 

@@ -559,9 +559,13 @@
       <span class="icon">◈</span> Reportes
     </div>
     <span class="nav-section admin-only" style="display:none">Administración</span>
-    <div class="nav-item admin-only" style="display:none" onclick="showPage('usuarios')">
-      <span class="icon">👤</span> Usuarios
-    </div>
+<div class="nav-item admin-only" style="display:none" onclick="showPage('usuarios')">
+  <span class="icon">👤</span> Usuarios
+</div>
+<span class="nav-section god-only" style="display:none">God Panel</span>
+<div class="nav-item god-only" style="display:none" onclick="showPage('empresas')">
+  <span class="icon">🏢</span> Empresas
+</div>
     <div class="nav-item" onclick="cerrarSesion()" style="margin-top:auto;color:var(--danger)">
       <span class="icon">⏻</span> Cerrar Sesión
     </div>
@@ -892,6 +896,27 @@
         </div>
       </div>
     </div>
+
+    <!-- EMPRESAS (solo god) -->
+    <div class="page" id="page-empresas">
+      <div class="panel panel-full">
+        <div class="panel-header">
+          <h3>🏢 Gestión de Empresas</h3>
+          <button class="btn btn-primary" onclick="openModal('modal-empresa')">+ Nueva Empresa</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Nombre</th><th>Email</th><th>Estado</th><th>Creada</th><th>Acciones</th></tr>
+            </thead>
+            <tbody id="empresas-tbody">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -976,6 +1001,42 @@
   </div>
 </div>
 
+<!-- MODAL NUEVA EMPRESA -->
+<div class="modal-overlay" id="modal-empresa">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>+ Nueva Empresa</h3>
+      <button class="modal-close" onclick="closeModal('modal-empresa')">✕</button>
+    </div>
+    <div class="form-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre Empresa *</label>
+          <input type="text" id="emp-nombre" placeholder="Nombre de la empresa">
+        </div>
+        <div class="form-group">
+          <label>Email *</label>
+          <input type="email" id="emp-email" placeholder="correo@empresa.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre Admin *</label>
+          <input type="text" id="emp-admin-nombre" placeholder="Nombre del administrador">
+        </div>
+        <div class="form-group">
+          <label>Password Admin *</label>
+          <input type="password" id="emp-admin-password" placeholder="Mínimo 6 caracteres">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-empresa')">Cancelar</button>
+        <button class="btn btn-primary" onclick="crearEmpresa()">Crear Empresa</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL EDITAR PRODUCTO -->
 <div class="modal-overlay" id="modal-editar-producto">
   <div class="modal">
@@ -1041,7 +1102,8 @@
     salida: 'Salidas <span>/ Despacho</span>',
     historial: 'Historial <span>/ Movimientos</span>',
     reportes: 'Reportes <span>/ Estadísticas</span>',
-    usuarios: 'Usuarios <span>/ Gestión</span>'
+    usuarios: 'Usuarios <span>/ Gestión</span>',
+    empresas: 'Empresas <span>/ God Panel</span>'
   };
 
   function showPage(name) {
@@ -1058,6 +1120,7 @@
     if (name === 'reportes') { updateReportes(); renderGraficos(); }
     if (name === 'historial') renderHistorialCompleto();
     if (name === 'usuarios') cargarUsuarios();
+    if (name === 'empresas') cargarEmpresas();
     if (window.innerWidth <= 768) closeSidebar();
   }
 
@@ -1634,9 +1697,52 @@ Esta acción no se puede deshacer.`)) return;
     } catch(e) { showToast(e.message, true); }
   }
 
-  async function cerrarSesion() {
-    await api('/auth/logout', 'POST');
-    window.location.href = '/login';
+  // ===== EMPRESAS =====
+  async function cargarEmpresas() {
+    const empresas = await api('/api/empresas/');
+    renderEmpresas(empresas);
+  }
+
+  function renderEmpresas(empresas) {
+    const tbody = document.getElementById('empresas-tbody');
+    if (!empresas.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px">Sin empresas registradas</td></tr>';
+      return;
+    }
+    tbody.innerHTML = empresas.map(e => `<tr>
+      <td><strong>${e.nombre}</strong></td>
+      <td>${e.email}</td>
+      <td>${e.activo ? '<span class="badge badge-green">Activa</span>' : '<span class="badge badge-red">Inactiva</span>'}</td>
+      <td>${e.creado_en ? e.creado_en.substring(0,10) : '-'}</td>
+      <td>
+        <button class="btn btn-danger" onclick="toggleEmpresa(${e.id}, ${e.activo})">
+          ${e.activo ? 'Desactivar' : 'Activar'}
+        </button>
+      </td>
+    </tr>`).join('');
+  }
+
+  async function crearEmpresa() {
+    const nombre         = document.getElementById('emp-nombre').value.trim();
+    const email          = document.getElementById('emp-email').value.trim();
+    const adminNombre    = document.getElementById('emp-admin-nombre').value.trim();
+    const adminPassword  = document.getElementById('emp-admin-password').value;
+    if (!nombre || !email || !adminNombre || !adminPassword) return showToast('Completa todos los campos', true);
+    try {
+      await api('/api/empresas/', 'POST', { nombre, email, admin_nombre: adminNombre, admin_password: adminPassword });
+      showToast(`Empresa "${nombre}" creada`);
+      closeModal('modal-empresa');
+      ['emp-nombre','emp-email','emp-admin-nombre','emp-admin-password'].forEach(id => document.getElementById(id).value = '');
+      cargarEmpresas();
+    } catch(e) { showToast(e.message, true); }
+  }
+
+  async function toggleEmpresa(id, activo) {
+    try {
+      await api(`/api/empresas/${id}`, 'PUT', { activo: !activo });
+      showToast(activo ? 'Empresa desactivada' : 'Empresa activada');
+      cargarEmpresas();
+    } catch(e) { showToast(e.message, true); }
   }
 
   // ===== SIDEBAR MOBILE =====
@@ -1666,8 +1772,12 @@ Esta acción no se puede deshacer.`)) return;
       document.querySelector('.user-badge span').textContent = usuario.nombre;
 
       // Mostrar sección admin si corresponde
-      if (usuario.rol === 'admin') {
+      if (usuario.rol === 'admin' || usuario.rol === 'god') {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+      }
+      // Mostrar sección god si corresponde
+      if (usuario.rol === 'god') {
+        document.querySelectorAll('.god-only').forEach(el => el.style.display = '');
       }
     } catch(e) {}
 

@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 from database import db
 from models import Entrada, Producto
 
@@ -8,8 +8,11 @@ entradas_bp = Blueprint('entradas', __name__)
 @entradas_bp.route('/', methods=['GET'])
 @login_required
 def listar():
-    entradas = Entrada.query.order_by(Entrada.creado_en.desc()).all()
-    return jsonify([e.to_dict() for e in entradas])
+    empresa_id = current_user.empresa_id if current_user.rol != 'god' else request.args.get('empresa_id', type=int)
+    q = Entrada.query
+    if empresa_id:
+        q = q.filter_by(empresa_id=empresa_id)
+    return jsonify([e.to_dict() for e in q.order_by(Entrada.creado_en.desc()).all()])
 
 @entradas_bp.route('/', methods=['POST'])
 @login_required
@@ -25,7 +28,8 @@ def crear():
     e = Entrada(
         fecha=data.get('fecha', ''), factura=data['factura'],
         proveedor=data['proveedor'], producto_id=prod.id,
-        cantidad=cantidad, obs=data.get('obs', '')
+        cantidad=cantidad, obs=data.get('obs', ''),
+        empresa_id=current_user.empresa_id
     )
     db.session.add(e)
     db.session.commit()

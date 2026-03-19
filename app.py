@@ -10,12 +10,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Base de datos:
-# - En Railway usa DATABASE_URL (PostgreSQL)
-# - En local usa SQLite
 database_url = os.getenv('DATABASE_URL', 'sqlite:///stockflow.db')
-
-# Railway usa 'postgres://' pero SQLAlchemy necesita 'postgresql://'
 if database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
@@ -27,8 +22,6 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_recycle': 300,
     'pool_pre_ping': True
 }
-
-# Mail config
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
@@ -54,6 +47,7 @@ from routes.productos import productos_bp
 from routes.entradas import entradas_bp
 from routes.salidas import salidas_bp
 from routes.usuarios import usuarios_bp
+from routes.empresas import empresas_bp
 
 app.register_blueprint(vistas_bp)
 app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -61,19 +55,17 @@ app.register_blueprint(productos_bp, url_prefix='/api/productos')
 app.register_blueprint(entradas_bp, url_prefix='/api/entradas')
 app.register_blueprint(salidas_bp, url_prefix='/api/salidas')
 app.register_blueprint(usuarios_bp, url_prefix='/api/usuarios')
+app.register_blueprint(empresas_bp, url_prefix='/api/empresas')
 
 with app.app_context():
     db.create_all()
-    from models import Usuario, Producto
-    if Usuario.query.count() == 0:
-        admin = Usuario(nombre='Administrador', email='admin@stockflow.com', rol='admin')
-        admin.set_password('admin123')
-        db.session.add(admin)
+    from models import Usuario
+    if Usuario.query.filter_by(rol='god').count() == 0:
+        god = Usuario(nombre='God', email=os.getenv('GOD_EMAIL', 'god@stockflow.com'), rol='god')
+        god.set_password(os.getenv('GOD_PASSWORD', 'god123'))
+        db.session.add(god)
         db.session.commit()
-        print('✅ Usuario admin creado: admin@stockflow.com / admin123')
-    if Producto.query.count() == 0:
-        from seed import cargar_datos_iniciales
-        cargar_datos_iniciales()
+        print('✅ Usuario God creado')
 
 if __name__ == '__main__':
     app.run(debug=True)

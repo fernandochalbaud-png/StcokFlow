@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 from database import db
 from models import Salida, Producto
 
@@ -8,8 +8,11 @@ salidas_bp = Blueprint('salidas', __name__)
 @salidas_bp.route('/', methods=['GET'])
 @login_required
 def listar():
-    salidas = Salida.query.order_by(Salida.creado_en.desc()).all()
-    return jsonify([s.to_dict() for s in salidas])
+    empresa_id = current_user.empresa_id if current_user.rol != 'god' else request.args.get('empresa_id', type=int)
+    q = Salida.query
+    if empresa_id:
+        q = q.filter_by(empresa_id=empresa_id)
+    return jsonify([s.to_dict() for s in q.order_by(Salida.creado_en.desc()).all()])
 
 @salidas_bp.route('/', methods=['POST'])
 @login_required
@@ -27,7 +30,8 @@ def crear():
     s = Salida(
         fecha=data.get('fecha', ''), tipo=data.get('tipo', 'factura'),
         referencia=data['referencia'], producto_id=prod.id,
-        cantidad=cantidad, destino=data.get('destino', '')
+        cantidad=cantidad, destino=data.get('destino', ''),
+        empresa_id=current_user.empresa_id
     )
     db.session.add(s)
     db.session.commit()
