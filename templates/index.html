@@ -1037,6 +1037,30 @@
   </div>
 </div>
 
+<!-- MODAL HISTORIAL EMPRESA -->
+<div class="modal-overlay" id="modal-logs-empresa">
+  <div class="modal" style="width:620px">
+    <div class="modal-header">
+      <h3 id="logs-empresa-titulo">Historial</h3>
+      <button class="modal-close" onclick="closeModal('modal-logs-empresa')">✕</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Evento</th>
+            <th>Notas</th>
+          </tr>
+        </thead>
+        <tbody id="logs-empresa-tbody">
+          <tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL EDITAR PRODUCTO -->
 <div class="modal-overlay" id="modal-editar-producto">
   <div class="modal">
@@ -1714,14 +1738,14 @@ Esta acción no se puede deshacer.`)) return;
       <td>${e.email}</td>
       <td>${e.activo ? '<span class="badge badge-green">Activa</span>' : '<span class="badge badge-red">Inactiva</span>'}</td>
       <td>${e.creado_en ? e.creado_en.substring(0,10) : '-'}</td>
-      <td>
+      <td style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="verLogsEmpresa(${e.id}, '${e.nombre}')">📋 Historial</button>
         <button class="btn btn-danger" onclick="toggleEmpresa(${e.id}, ${e.activo})">
           ${e.activo ? 'Desactivar' : 'Activar'}
         </button>
       </td>
     </tr>`).join('');
   }
-
   async function crearEmpresa() {
     const nombre         = document.getElementById('emp-nombre').value.trim();
     const email          = document.getElementById('emp-email').value.trim();
@@ -1742,6 +1766,22 @@ Esta acción no se puede deshacer.`)) return;
       await api(`/api/empresas/${id}`, 'PUT', { activo: !activo });
       showToast(activo ? 'Empresa desactivada' : 'Empresa activada');
       cargarEmpresas();
+    } catch(e) { showToast(e.message, true); }
+  }
+  async function verLogsEmpresa(id, nombre) {
+    try {
+      const logs = await api(`/api/empresas/${id}/logs`);
+      const tbody = document.getElementById('logs-empresa-tbody');
+      const titulo = document.getElementById('logs-empresa-titulo');
+      titulo.textContent = `Historial — ${nombre}`;
+      tbody.innerHTML = logs.length
+        ? logs.map(l => `<tr>
+            <td>${l.fecha ? l.fecha.substring(0,19).replace('T',' ') : '-'}</td>
+            <td><span class="badge ${l.evento === 'creada' ? 'badge-green' : l.evento === 'activada' ? 'badge-purple' : 'badge-red'}">${l.evento}</span></td>
+            <td>${l.notas}</td>
+          </tr>`).join('')
+        : '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px">Sin registros</td></tr>';
+      openModal('modal-logs-empresa');
     } catch(e) { showToast(e.message, true); }
   }
 

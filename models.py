@@ -125,3 +125,23 @@ class Salida(db.Model):
             'cantidad': self.cantidad,
             'destino': self.destino
         }
+
+class EmpresaLog(db.Model):
+    __tablename__ = 'empresa_logs'
+    id         = db.Column(db.Integer, primary_key=True)
+    empresa_id = db.Column(db.Integer, db.ForeignKey('empresas.id'), nullable=False)
+    evento     = db.Column(db.String(50), nullable=False)  # creada | activada | desactivada
+    fecha      = db.Column(db.DateTime, default=datetime.utcnow)
+    notas      = db.Column(db.String(200), default='')
+
+    empresa    = db.relationship('Empresa', backref='logs')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'empresa_id': self.empresa_id,
+            'empresa': self.empresa.nombre,
+            'evento': self.evento,
+            'fecha': str(self.fecha),
+            'notas': self.notas
+        }        
