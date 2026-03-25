@@ -1945,7 +1945,12 @@ function abrirNuevoUsuarioEmpresa() {
       verUsuariosEmpresa(parseInt(empresa_id), empNombre);
     } catch(e) { showToast(e.message, true); }
   }
-  // ===== SIDEBAR MOBILE =====
+  async function cerrarSesion() {
+    await api('/auth/logout', 'POST');
+    window.location.href = '/login';
+  }
+
+    // ===== SIDEBAR MOBILE =====
   function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('open');
     document.getElementById('sidebar-overlay').classList.toggle('open');
